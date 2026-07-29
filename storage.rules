@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Warden profile photos - public read, anyone can upload (no auth required)
+    match /warden-photos/{fileName} {
+      allow read: if true;
+      allow write: if true;
+    }
+    // Issue/completion photos - public read, anyone can upload
+    match /issues/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+    // Avatars - public read, anyone can upload
+    match /avatars/{allPaths=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+    // All other files - open for now (can restrict later)
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}

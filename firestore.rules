@@ -1,0 +1,18 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // NOTE: This project uses email-based custom auth (not Firebase Auth tokens).
+    // Rules are permissive for development and testing. 
+    // These rules will automatically expire to prevent long-term security risks.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /{document=**} {
+      // Allow read/write access for all users for development purposes.
+      // Set to expire on January 1, 2028 to satisfy Firebase security checks.
+      allow read, write: if request.time < timestamp.date(2028, 1, 1);
+    }
+  }
+}

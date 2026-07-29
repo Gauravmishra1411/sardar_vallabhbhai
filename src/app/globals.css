@@ -1,17 +1,28 @@
 @import "tailwindcss";
 
+@theme {
+  --color-purple-600: #A100FF;
+  --color-purple-500: #A100FF;
+  --color-purple-950: #24103F;
+  --color-purple-900: #24103F;
+  --color-indigo-950: #24103F;
+  --color-emerald-600: #00A66A;
+  --color-emerald-500: #00A66A;
+  --color-slate-900: #24103F;
+  --color-gray-900: #24103F;
+  --color-purple-300: #C084FC;
+  --color-border-dark: #432060;
+}
+
 @layer base {
   :root {
-    --bg-dark: #090d16;
-    --bg-card: #111827;
-    --accent-blue: #3b82f6;
-    --accent-purple: #8b5cf6;
-    --accent-cyan: #06b6d4;
+    --bg-dark: #0D1320;
+    --bg-card: #24103F;
   }
 
   body {
-    background-color: #0b0f19;
-    color: #f3f4f6;
+    background-color: #0D1320;
+    color: #FFFFFF;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     overflow-x: hidden;
   }
@@ -23,7 +34,7 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0f19;
+  background: #0D1320;
 }
 ::-webkit-scrollbar-thumb {
   background: #1f293d;
@@ -64,6 +75,15 @@
   }
 }
 
+@keyframes bounceSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
 .animate-slide-up {
   animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -76,35 +96,99 @@
   animation: floatGlow 6s ease-in-out infinite;
 }
 
+.animate-bounce-slow {
+  animation: bounceSlow 4s ease-in-out infinite;
+}
+
+/* Dark Glassmorphism */
 .glass-panel {
-  background: rgba(17, 24, 39, 0.75);
+  background: rgba(36, 16, 63, 0.75); /* Card color #24103F with opacity */
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #432060; /* Border color #432060 */
 }
 
 .glass-card {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(36, 16, 63, 0.6); /* Card color #24103F with opacity */
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid #432060; /* Border color #432060 */
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-card:hover {
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 0 10px 30px -10px rgba(79, 70, 229, 0.2);
+  border-color: #A100FF; /* Purple color #A100FF */
+  box-shadow: 0 10px 30px -10px rgba(161, 0, 255, 0.25);
   transform: translateY(-2px);
 }
 
 .glass-input {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #f3f4f6;
+  background: rgba(36, 16, 63, 0.8); /* Card color #24103F with opacity */
+  border: 1px solid #432060; /* Border color #432060 */
+  color: #FFFFFF;
   transition: all 0.2s ease;
 }
 
 .glass-input:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: #A100FF; /* Purple color #A100FF */
+  box-shadow: 0 0 0 3px rgba(161, 0, 255, 0.2);
+}
+
+/* Pastel Claymorphic 3D Styles (Matching Reference Image) */
+.pastel-bg {
+  background: radial-gradient(circle at 50% 20%, #ffd6e8 0%, #e8d5ff 40%, #c4b5fd 75%, #a78bfa 100%);
+}
+
+.clay-card {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  border-radius: 2.5rem;
+  box-shadow: 
+    0 30px 60px -12px rgba(124, 58, 237, 0.25),
+    0 18px 36px -18px rgba(236, 72, 153, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+}
+
+.clay-input {
+  background: #f5f0ff;
+  border: 1.5px solid #e2d4fc;
+  color: #374151;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clay-input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15), 0 4px 12px rgba(168, 85, 247, 0.1);
+}
+
+.clay-button-primary {
+  background: linear-gradient(135deg, #f472b6 0%, #c084fc 40%, #818cf8 100%);
+  box-shadow: 0 10px 25px -5px rgba(192, 132, 252, 0.5), 0 4px 10px rgba(244, 114, 182, 0.3);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clay-button-primary:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 14px 30px -4px rgba(192, 132, 252, 0.65), 0 6px 15px rgba(244, 114, 182, 0.4);
+}
+
+.clay-button-primary:active {
+  transform: translateY(0px) scale(0.99);
+}
+
+.clay-button-secondary {
+  background: #ffffff;
+  border: 1.5px solid #e9d5ff;
+  color: #6b21a8;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.08);
+  transition: all 0.2s ease;
+}
+
+.clay-button-secondary:hover {
+  background: #faf5ff;
+  border-color: #c084fc;
+  box-shadow: 0 6px 16px rgba(168, 85, 247, 0.18);
+  transform: translateY(-1px);
 }
