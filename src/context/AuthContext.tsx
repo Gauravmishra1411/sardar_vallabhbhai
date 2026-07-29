@@ -1058,7 +1058,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (newStatus === 'In Progress') {
       staffStartWork(issueId);
     } else {
-      staffResolveIssue(issueId, 'Work completed.', completionPhotoUrl);
+      completePhysicalWork(issueId, 'Work completed.', completionPhotoUrl);
     }
   };
 
@@ -1207,7 +1207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteUser,
         clearLogs,
         requests: issues,
-        createRequest: (title, description, category, priority) =>
+        createRequest: (title: string, description: string, category: string, priority: string) =>
           createIssue({
             category: 'Other',
             subCategory: category || 'General',
@@ -1217,13 +1217,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             roomNumber: currentUser?.roomNumber || 'B-101',
             mobileNumber: currentUser?.mobileNumber || '+91 99999 88888',
           }),
-        updateRequestStatus: (id, status) => {
+        updateRequestStatus: (id: string, status: string) => {
           const newStatus = ['New', 'Assigned', 'In Progress', 'Work Completed', 'Completed'].includes(status)
             ? status as IssueStatus
             : migrateLegacyStatus(status);
           updateIssue(id, { status: newStatus });
         },
-        deleteRequest: (id) => {
+        deleteRequest: (id: string) => {
           setIssues((prev) => {
             const updated = prev.filter((i) => i.id !== id);
             safeLocalStorage.setItem('svpuat_issues', JSON.stringify(updated));
