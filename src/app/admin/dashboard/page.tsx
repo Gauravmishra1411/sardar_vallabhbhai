@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { HostelIssue, IssuePriority, IssueStatus, ISSUE_CATEGORIES, DEPARTMENTS } from '@/types/auth';
@@ -33,6 +33,7 @@ import {
   Landmark,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ChatLayout } from '@/components/chat/ChatLayout';
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -90,8 +91,8 @@ const PRIORITY_CONFIG = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function AdminDashboard() {
-  const { currentUser, issues, users, assignWork, closeComplaint, reopenComplaint, reviewExpense, processPayment, markIssueCompleted, logout } = useAuth();
+function AdminDashboardContent() {
+  const { currentUser, issues, users, assignWork, closeComplaint, reopenComplaint, reviewExpense, processPayment, markIssueCompleted, approveGrievance, logout } = useAuth();
   const searchParams = useSearchParams();
 
   const [selectedIssue, setSelectedIssue] = useState<HostelIssue | null>(null);
@@ -99,7 +100,7 @@ export default function AdminDashboard() {
   const [reviewingExpenseIssue, setReviewingExpenseIssue] = useState<HostelIssue | null>(null);
   const [processingPaymentIssue, setProcessingPaymentIssue] = useState<HostelIssue | null>(null);
   const [reopeningIssue, setReopeningIssue] = useState<HostelIssue | null>(null);
-  const [activeTab, setActiveTab] = useState<'issues' | 'reports' | 'users'>('issues');
+  const [activeTab, setActiveTab] = useState<'issues' | 'reports' | 'users' | 'messages'>('issues');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [hostelFilter, setHostelFilter] = useState('All');
@@ -164,6 +165,8 @@ export default function AdminDashboard() {
             <span className="text-white text-xs capitalize font-semibold">{activeTab}</span>
           </div>
           <div className="flex items-center gap-3">
+            <button onClick={() => setActiveTab('messages')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'messages' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>Messages</button>
+            <button onClick={() => setActiveTab('users')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'users' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>Staff</button>
             <NotificationCenter />
             <span className="px-3 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-purple-300 text-xs font-semibold">
               System Active
@@ -378,6 +381,21 @@ export default function AdminDashboard() {
                                 </button>
                               )}
 
+                              {/* Admin Approve Grievance Button */}
+                              {!iss.adminApproved ? (
+                                <button
+                                  onClick={() => approveGrievance(iss.id)}
+                                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-extrabold shadow-md flex items-center gap-1.5 transition-all border border-emerald-500/50"
+                                  title="Approve this grievance — locks it from Warden edits"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" /> Approve Grievance
+                                </button>
+                              ) : (
+                                <span className="px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-[9px] font-black flex items-center gap-1 uppercase tracking-wide">
+                                  <CheckCircle2 className="w-3 h-3" /> Admin Approved
+                                </span>
+                              )}
+
                               <button
                                 onClick={() => setSelectedIssue(iss)}
                                 className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-semibold transition-all flex items-center gap-1.5"
@@ -512,6 +530,13 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+
+          {/* ─── TAB: MESSAGES ────────────────────────────────────────────── */}
+          {activeTab === 'messages' && (
+            <div className="h-full pt-4">
+              <ChatLayout />
+            </div>
+          )}
         </main>
       </div>
 
@@ -572,5 +597,22 @@ export default function AdminDashboard() {
 
       <IssueDetailsModal issue={selectedIssue} onClose={() => setSelectedIssue(null)} />
     </>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#070a12] flex items-center justify-center text-white">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+            <p className="text-sm text-gray-400 font-medium">Loading Admin Dashboard...</p>
+          </div>
+        </div>
+      }
+    >
+      <AdminDashboardContent />
+    </Suspense>
   );
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { ISSUE_CATEGORIES, CategoryName, IssuePriority } from '@/types/auth';
 import { SVPUAT_HOSTELS } from '@/constants/hostels';
 import { LayoutDashboard, Users, FileCheck, ShieldCheck, LogOut, Lock, Sparkles, UserCheck, Building2, PlusCircle, X, Camera, User, AlertTriangle, BarChart3, Bell, Menu } from 'lucide-react';
@@ -279,7 +280,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Admin Sidebar */}
-      <aside className={`fixed inset-y-0 z-50 w-72 md:w-64 glass-panel border-r border-purple-500/20 flex flex-col shrink-0 transition-all duration-300 ease-in-out bg-[#0a0f1c] ${isMobileMenuOpen ? 'left-0' : '-left-full'} md:relative md:left-0`}>
+      <aside className={`fixed inset-y-0 z-50 w-72 md:w-64 glass-panel border-r border-purple-500/20 flex flex-col shrink-0 overflow-y-auto max-h-screen transition-all duration-300 ease-in-out bg-[#0a0f1c] ${isMobileMenuOpen ? 'left-0' : '-left-full'} md:relative md:left-0`}>
         {/* Brand */}
         <div className="p-6 border-b border-purple-500/20 flex flex-col gap-4 relative">
           <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white md:hidden">
@@ -323,7 +324,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-1.5 py-2 mt-2">
+        <nav className="flex-1 overflow-y-auto px-4 space-y-1.5 py-2 mt-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-purple-400 px-3 mb-2">Admin Management</div>
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -365,7 +366,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Viewport */}
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Header */}
-        <header className="h-16 border-b border-purple-500/20 bg-[#070a12]/80 backdrop-blur-md px-8 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-16 border-b border-purple-500/20 bg-[#070a12]/80 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <span className="text-base md:text-lg font-bold text-white tracking-wide"> </span>
             <span className="text-purple-500/40">|</span>
@@ -376,14 +377,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-purple-300 text-xs font-semibold">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-purple-300 text-xs font-semibold">
               <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
               Administrative Mode
             </span>
+          </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">{children}</main>
+        <main className="flex-1 p-3 sm:p-6 md:p-8 overflow-y-auto max-w-full">{children}</main>
       </div>
 
       {/* ========== ADD ISSUE MODAL ========== */}

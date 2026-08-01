@@ -52,8 +52,8 @@ export const IssueDetailsModal: React.FC<Props> = ({ issue, onClose }) => {
   const currentFinIndex = getFinancialStageIndex();
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#0f172a] border border-indigo-500/30 rounded-3xl max-w-2xl w-full p-6 md:p-8 text-white shadow-2xl relative animate-in zoom-in-95 duration-200 my-4">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-[#0f172a] border border-indigo-500/30 rounded-3xl max-w-2xl w-[95%] sm:w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 md:p-8 text-white shadow-2xl relative animate-in zoom-in-95 duration-200 my-4">
         
         {/* ─── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between border-b border-gray-800 pb-4">
@@ -257,13 +257,24 @@ export const IssueDetailsModal: React.FC<Props> = ({ issue, onClose }) => {
           </div>
         )}
 
-        {/* ─── Complaint Photo ──────────────────────────────────────────── */}
-        {issue.photoUrl && (
+        {/* ─── Complaint Photos ──────────────────────────────────────────── */}
+        {(issue.photoUrls?.length ? issue.photoUrls : issue.photoUrl ? [issue.photoUrl] : []).length > 0 && (
           <div className="mt-3">
             <h5 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Camera className="w-3.5 h-3.5" /> Complaint Photo
+              <Camera className="w-3.5 h-3.5" /> Complaint Photos
             </h5>
-            <img src={issue.photoUrl} alt="Complaint" className="rounded-xl border border-gray-700 max-h-40 object-cover w-full" />
+            <div className={`grid gap-2 ${
+              (issue.photoUrls?.length || 1) === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3'
+            }`}>
+              {(issue.photoUrls?.length ? issue.photoUrls : issue.photoUrl ? [issue.photoUrl] : []).map((url, idx) => (
+                <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block relative group overflow-hidden rounded-xl border border-gray-700">
+                  <img src={url} alt={`Complaint ${idx + 1}`} className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="text-white text-[10px] font-bold bg-black/60 px-2 py-1 rounded">View Full</span>
+                  </div>
+                </a>
+              ))}
+            </div>
           </div>
         )}
 

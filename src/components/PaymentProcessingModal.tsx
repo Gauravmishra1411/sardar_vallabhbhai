@@ -26,8 +26,8 @@ export const PaymentProcessingModal: React.FC<Props> = ({ issue, onClose, onProc
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#0f172a] border border-fuchsia-500/40 rounded-3xl max-w-lg w-full p-6 text-white shadow-2xl relative animate-in zoom-in-95 duration-200 my-8">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-[#0f172a] border border-fuchsia-500/40 rounded-3xl max-w-lg w-[95%] sm:w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 text-white shadow-2xl relative animate-in zoom-in-95 duration-200 my-4">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-800 pb-4 mb-4">
           <div className="flex items-center gap-3">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HostelIssue, IssuePriority, DEPARTMENTS, User, SLA_OPTIONS, SlaTime, PROBLEM_TYPES, ProblemType } from '@/types/auth';
-import { UserCheck, X, AlertTriangle, Play, MapPin, FileText } from 'lucide-react';
+import { UserCheck, X, AlertTriangle, Play, MapPin, FileText, Wand2 } from 'lucide-react';
 
 interface Props {
   issue: HostelIssue;
@@ -42,6 +42,9 @@ export const AssignWorkModal: React.FC<Props> = ({ issue, staffMembers, onClose,
   const [assignmentNote, setAssignmentNote] = useState('');
   const [startImmediately, setStartImmediately] = useState(true);
 
+  // AI State
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // Set default staff member when staff list or department changes
   useEffect(() => {
     // Optionally filter staff by department here if needed in the future
@@ -51,14 +54,41 @@ export const AssignWorkModal: React.FC<Props> = ({ issue, staffMembers, onClose,
     }
   }, [staffMembers, department, staffId]);
 
+  const generateReasonWithAI = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/generate-reason', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: issue.category,
+          subCategory: issue.subCategory,
+          description: issue.description,
+          priority
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPriorityReason(data.text);
+      } else {
+        console.error('Failed to generate reason:', await res.text());
+        alert('AI Generation failed. Please type manually.');
+      }
+    } catch (err) {
+      console.error('AI Error:', err);
+      alert('AI Generation failed. Please type manually.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffId) return;
 
-    const staffMember = staffMembers.find((s) => s.id === staffId);
-    if (!staffMember) return;
+    const finalStaffId = staffId || 'unassigned-staff';
+    const finalStaffName = staffMembers.find((s) => s.id === finalStaffId)?.name || 'Maintenance Team';
 
-    onAssign(issue.id, staffId, staffMember.name, department, priority, {
+    onAssign(issue.id, finalStaffId, finalStaffName, department, priority, {
       assignmentNote: assignmentNote.trim() || undefined,
       slaTime,
       priorityReason: (priority === 'High' || priority === 'Urgent') ? priorityReason.trim() : undefined,
@@ -73,8 +103,8 @@ export const AssignWorkModal: React.FC<Props> = ({ issue, staffMembers, onClose,
   const isPriorityReasonRequired = priority === 'High' || priority === 'Urgent';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#0f172a] border border-amber-500/40 rounded-3xl max-w-4xl w-full p-6 text-white shadow-2xl relative animate-in zoom-in-95 duration-200 my-8">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-[#0f172a] border border-amber-500/40 rounded-3xl max-w-4xl w-[95%] sm:w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 md:p-8 text-white shadow-2xl relative animate-in zoom-in-95 duration-200 my-4">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-800 pb-4 mb-4">
           <div className="flex items-center gap-3">
@@ -98,51 +128,51 @@ export const AssignWorkModal: React.FC<Props> = ({ issue, staffMembers, onClose,
               <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-indigo-400" /> Complaint Summary
               </h4>
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between border-b border-gray-800 pb-2">
-                  <span className="text-gray-500">Complaint ID</span>
-                  <span className="font-bold text-indigo-300">{issue.id}</span>
+              <div className="space-y-2">
+                <div className="flex justify-between py-1.5 border-b border-gray-800/50">
+                  <span className="text-xs text-gray-500">Complaint ID</span>
+                  <span className="text-xs font-bold text-indigo-300">{issue.id}</span>
                 </div>
-                <div className="flex justify-between border-b border-gray-800 pb-2">
-                  <span className="text-gray-500">Student Name</span>
-                  <span className="font-medium text-white">{issue.studentName}</span>
+                <div className="flex justify-between py-1.5 border-b border-gray-800/50">
+                  <span className="text-xs text-gray-500">Student Name</span>
+                  <span className="text-xs font-bold text-white">{issue.studentName}</span>
                 </div>
-                <div className="flex justify-between border-b border-gray-800 pb-2">
-                  <span className="text-gray-500">Hostel</span>
-                  <span className="font-medium text-white">{issue.hostelName}</span>
+                <div className="flex justify-between py-1.5 border-b border-gray-800/50">
+                  <span className="text-xs text-gray-500">Hostel</span>
+                  <span className="text-xs font-bold text-white">{issue.hostelName}</span>
                 </div>
-                <div className="flex justify-between border-b border-gray-800 pb-2">
-                  <span className="text-gray-500">Room Number</span>
-                  <span className="font-medium text-white">{issue.roomNumber}</span>
+                <div className="flex justify-between py-1.5 border-b border-gray-800/50">
+                  <span className="text-xs text-gray-500">Room Number</span>
+                  <span className="text-xs font-bold text-white">{issue.roomNumber}</span>
                 </div>
-                <div className="flex justify-between border-b border-gray-800 pb-2">
-                  <span className="text-gray-500">Category</span>
-                  <span className="font-medium text-white">{issue.category}</span>
+                <div className="flex justify-between py-1.5 border-b border-gray-800/50">
+                  <span className="text-xs text-gray-500">Category</span>
+                  <span className="text-xs font-bold text-white">{issue.category}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Title</span>
-                  <span className="font-medium text-white">{issue.subCategory}</span>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-xs text-gray-500">Title</span>
+                  <span className="text-xs font-bold text-white text-right max-w-[200px] truncate" title={issue.subCategory}>{issue.subCategory}</span>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-800">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400" /> Problem Description
+            <div className="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/20">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-2 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> Problem Description
               </h4>
-              <p className="text-xs text-gray-300 leading-relaxed bg-black/40 p-3 rounded-lg border border-gray-800">
-                {issue.description}
-              </p>
+              <div className="p-3 bg-gray-900 rounded-lg border border-indigo-500/10 text-xs text-indigo-100/80 leading-relaxed min-h-[80px]">
+                {issue.description || 'No detailed description provided by the student.'}
+              </div>
             </div>
           </div>
 
           {/* Right Column: Assignment Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* Location block */}
-            <div className="bg-indigo-950/20 p-4 rounded-xl border border-indigo-500/20 space-y-3">
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5 mb-2">
-                <MapPin className="w-3.5 h-3.5" /> Exact Location
+            {/* Location Details */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+                <MapPin className="w-4 h-4" /> Exact Location
               </h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -181,53 +211,7 @@ export const AssignWorkModal: React.FC<Props> = ({ issue, staffMembers, onClose,
               </div>
             </div>
 
-            {/* Priority */}
-            <div className="bg-amber-950/20 p-4 rounded-xl border border-amber-500/20 space-y-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Priority</label>
-                <select value={priority} onChange={(e) => setPriority(e.target.value as IssuePriority)}
-                  className="w-full bg-gray-900 border border-amber-500/40 px-3 py-2 rounded-lg text-xs text-white font-bold focus:outline-none focus:border-amber-500">
-                  <option value="Low">Low Priority</option>
-                  <option value="Medium">Medium Priority</option>
-                  <option value="High">High Priority</option>
-                  <option value="Urgent">Urgent Priority</option>
-                </select>
-              </div>
-              
-              {isPriorityReasonRequired && (
-                <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block mb-1">
-                    Priority Reason <span className="text-rose-500">*</span>
-                  </label>
-                  <textarea rows={2} required placeholder="Why is this High/Urgent? (e.g. Water leakage may damage electrical wiring)"
-                    value={priorityReason} onChange={(e) => setPriorityReason(e.target.value)}
-                    className="w-full bg-gray-900 border border-rose-500/50 p-3 rounded-lg text-xs text-white placeholder-gray-600 focus:outline-none focus:border-rose-500" />
-                </div>
-              )}
-            </div>
-
-            {/* Department & Staff */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Department</label>
-                <select value={department} onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-700 px-3 py-2 rounded-lg text-xs text-white focus:outline-none focus:border-amber-500">
-                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Assign Staff</label>
-                <select value={staffId} onChange={(e) => setStaffId(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-700 px-3 py-2 rounded-lg text-xs text-white focus:outline-none focus:border-amber-500">
-                  {staffMembers.length === 0
-                    ? <option value="">No staff found</option>
-                    : staffMembers.map((st) => (
-                        <option key={st.id} value={st.id}>{st.name} {st.department ? `(${st.department})` : ''}</option>
-                      ))
-                  }
-                </select>
-              </div>
-            </div>
+            {/* Priority & Staff sections removed as requested */}
 
             {/* Admin Instruction */}
             <div>
@@ -255,7 +239,7 @@ export const AssignWorkModal: React.FC<Props> = ({ issue, staffMembers, onClose,
               <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl bg-gray-800 text-gray-300 text-xs font-bold hover:bg-gray-700 transition-all">
                 Cancel
               </button>
-              <button type="submit" disabled={!staffId || (isPriorityReasonRequired && !priorityReason.trim())} 
+              <button type="submit"
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-xs font-extrabold shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all disabled:opacity-50">
                 {startImmediately ? (
                   <>

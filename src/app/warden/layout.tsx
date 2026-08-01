@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Building2, ShieldCheck, LogOut, LayoutDashboard, ArrowRight, User, Menu, X } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useFCM } from '@/hooks/useFCM';
 
 export default function WardenLayout({ children }: { children: React.ReactNode }) {
@@ -62,9 +63,12 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
           <img src="/logo_neww.png" alt="SVPUAT Logo" className="w-10 h-10 object-contain" />
           <h1 className="font-bold text-sm text-white">Warden Portal</h1>
         </div>
-        <button type="button" onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-purple-900/40 rounded-lg text-purple-300">
-          <Menu className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button type="button" onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-purple-900/40 rounded-lg text-purple-300">
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
       </div>
 
       {/* Mobile Backdrop */}
@@ -73,7 +77,7 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
       )}
 
       {/* Warden Sidebar */}
-      <aside className={`fixed inset-y-0 z-50 w-72 md:w-64 glass-panel border-r border-purple-500/20 flex flex-col shrink-0 transition-all duration-300 ease-in-out bg-[#0a0f1c] ${isMobileMenuOpen ? 'left-0' : '-left-full'} md:relative md:left-0`}>
+      <aside className={`fixed inset-y-0 z-50 w-72 md:w-64 glass-panel border-r border-purple-500/20 flex flex-col shrink-0 overflow-y-auto max-h-screen transition-all duration-300 ease-in-out bg-[#0a0f1c] ${isMobileMenuOpen ? 'left-0' : '-left-full'} md:relative md:left-0`}>
         <div className="p-6 border-b border-purple-500/20 flex flex-col gap-4 relative">
           <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white md:hidden">
             <X className="w-5 h-5" />
@@ -105,7 +109,7 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-1.5 py-2">
+        <nav className="flex-1 overflow-y-auto px-4 space-y-1.5 py-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-purple-400 px-3 mb-2">Hostel Management</div>
           <Link
             href="/warden/dashboard"
@@ -156,7 +160,7 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">{children}</main>
+      <main className="flex-1 p-3 sm:p-6 md:p-8 overflow-y-auto max-w-full">{children}</main>
     </div>
   );
 }

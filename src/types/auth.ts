@@ -20,7 +20,7 @@ export const PROBLEM_TYPES = [
   'Other',
 ] as const;
 export type ProblemType = typeof PROBLEM_TYPES[number];
-export type UserStatus = 'active' | 'suspended';
+export type UserStatus = 'active' | 'suspended' | 'pending' | 'rejected';
 
 export interface WardenRegistrationFormData {
   // 01 Personal Information
@@ -59,6 +59,9 @@ export interface User {
   email: string;
   role: UserRole;
   status: UserStatus;
+  approved?: boolean;
+  approvedBy?: string;
+  approvedAt?: any;
   hostelName?: string;
   roomNumber?: string;
   mobileNumber?: string;
@@ -76,6 +79,10 @@ export interface User {
   shift?: string;
   employmentType?: string;
   wardenDetails?: WardenRegistrationFormData;
+  isOnline?: boolean;
+  lastSeen?: any;
+  // Internal — never exposed to session
+  passwordHash?: string;
 }
 
 // ============================================================
@@ -239,11 +246,23 @@ export interface HostelIssue {
   title?: string;
   description: string;
   priority: IssuePriority;
-  photoUrl?: string;
+  photoUrl?: string;       // legacy single photo (kept for backward compat)
+  photoUrls?: string[];   // NEW: multiple photos from Cloudinary
+
 
   // ---- NEW SEPARATED STATUS WORKFLOW FIELDS ----
   status: IssueStatus;
   financialStatus: FinancialStatus;
+
+  // Admin Approval Info
+  adminApproved?: boolean;
+  adminApprovedAt?: string;
+  adminApprovedBy?: string;
+
+  // Soft Delete Info (for History view)
+  deleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
 
   // Assignment info
   assignedStaffId?: string;

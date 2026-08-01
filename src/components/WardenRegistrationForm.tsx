@@ -828,8 +828,8 @@ export function WardenRegistrationForm({ onSuccess }: { onSuccess?: () => void }
                   >
                     <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                     <div className="text-left">
-                      <p className="text-xs font-bold">Active</p>
-                      <p className="text-[10px] text-gray-400">Warden portal login immediately enabled</p>
+                      <p className="text-xs font-bold">Active (after Admin Approval)</p>
+                      <p className="text-[10px] text-gray-400">Account activates once Admin approves it</p>
                     </div>
                   </button>
 
@@ -844,8 +844,8 @@ export function WardenRegistrationForm({ onSuccess }: { onSuccess?: () => void }
                   >
                     <AlertCircle className="w-5 h-5 text-amber-400" />
                     <div className="text-left">
-                      <p className="text-xs font-bold">Suspended / Pending</p>
-                      <p className="text-[10px] text-gray-400">Account created but requires admin verification</p>
+                      <p className="text-xs font-bold">Pending Approval</p>
+                      <p className="text-[10px] text-gray-400">Created but awaiting Admin approval to login</p>
                     </div>
                   </button>
                 </div>

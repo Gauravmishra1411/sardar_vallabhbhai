@@ -13,7 +13,7 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  const pendingWardens = users.filter((u) => u.role === 'warden' && u.status === 'suspended');
+  const pendingWardens = users.filter((u) => u.role === 'warden' && (u.status === 'suspended' || u.status === 'pending' || u.approved === false));
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -135,7 +135,9 @@ export default function AdminUsersPage() {
           >
             <option value="all">All Statuses</option>
             <option value="active">Active</option>
-            <option value="suspended">Suspended / Pending Approval</option>
+            <option value="pending">Pending Approval</option>
+            <option value="suspended">Suspended</option>
+            <option value="rejected">Rejected</option>
           </select>
         </div>
       </div>
@@ -163,7 +165,7 @@ export default function AdminUsersPage() {
               <tbody className="divide-y divide-purple-500/10">
                 {filteredUsers.map((user) => {
                   const isSelf = user.id === currentUser?.id;
-                  const isPendingWarden = user.role === 'warden' && user.status === 'suspended';
+                  const isPendingWarden = user.role === 'warden' && (user.status === 'suspended' || user.status === 'pending' || user.approved === false);
 
                   return (
                     <tr key={user.id} className="hover:bg-white/[0.02] transition-colors">
@@ -231,7 +233,7 @@ export default function AdminUsersPage() {
                             }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'active' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                            {user.status === 'active' ? 'Active' : 'Suspended'}
+                            {user.status === 'active' ? 'Active' : user.status === 'pending' ? 'Pending' : user.status === 'rejected' ? 'Rejected' : 'Suspended'}
                           </button>
                         )}
                       </td>

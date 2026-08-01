@@ -54,7 +54,7 @@ function AuthFormContent({ defaultRole }: { defaultRole?: UserRole }) {
     } catch (err) {}
 
     // Enforce role-based login via AuthContext
-    const res = loginUserByEmail(email.trim(), password, activeRole);
+    const res = await loginUserByEmail(email.trim(), password, activeRole);
     if (res.success) {
       if (activeRole === 'admin') router.push('/admin/dashboard');
       else router.push('/warden/dashboard');
@@ -73,13 +73,13 @@ function AuthFormContent({ defaultRole }: { defaultRole?: UserRole }) {
 
       {/* Main Clay Card Wrapper */}
       <div className="w-full max-w-md my-6 relative z-10">
-        {/* 3D Header Illustration */}
-        <div className="relative -mb-10 z-20 flex justify-center pointer-events-none">
-          <div className="relative w-60 h-48 md:w-68 md:h-52">
+        {/* Animated SVPUAT Logo Header */}
+        <div className="relative -mb-14 z-20 flex justify-center pointer-events-none">
+          <div className="relative w-36 h-36 md:w-44 md:h-44 flex items-center justify-center animate-logo-float">
             <img
-              src="/warden-header.png"
-              alt="3D SVPUAT Hostel Portal"
-              className="w-full h-full object-contain drop-shadow-[0_15px_25px_rgba(168,85,247,0.3)] animate-float-glow"
+              src="/bglogo.png"
+              alt="SVPUAT University Logo"
+              className="w-full h-full object-contain"
             />
           </div>
         </div>

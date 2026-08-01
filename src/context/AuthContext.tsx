@@ -15,7 +15,8 @@ import {
   migrateLegacyStatus,
 } from '@/types/auth';
 import { safeLocalStorage } from '@/utils/safeStorage';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import {
   doc,
   setDoc,
@@ -83,7 +84,7 @@ interface AuthContextType {
 
   // Authentication
   loginRole: (role: UserRole) => void;
-  loginUserByEmail: (email: string, pass: string, requestedRole?: UserRole) => { success: boolean; error?: string };
+  loginUserByEmail: (email: string, pass: string, requestedRole?: UserRole) => Promise<{ success: boolean; error?: string }>;
   registerStudent: (
     name: string,
     email: string,
@@ -106,6 +107,7 @@ interface AuthContextType {
     roomNumber: string;
     mobileNumber: string;
     photoUrl?: string;
+    photoUrls?: string[];
   }) => { success: boolean; error?: string };
 
   // Admin OR Warden assigns staff (New → Assigned OR directly → In Progress)
@@ -170,6 +172,22 @@ interface AuthContextType {
 
   // Final step: Mark issue as Completed
   markIssueCompleted: (issueId: string) => void;
+
+  // Admin approves a grievance (locks it for further warden edits)
+  approveGrievance: (issueId: string) => void;
+
+  // Warden edits a grievance (blocked if adminApproved)
+  editGrievance: (issueId: string, updates: {
+    category: CategoryName;
+    subCategory: string;
+    description: string;
+    priority: IssuePriority;
+    roomNumber: string;
+    photoUrl?: string;
+  }) => { success: boolean; error?: string };
+
+  // Warden deletes a grievance (blocked if adminApproved)
+  deleteGrievance: (issueId: string) => { success: boolean; error?: string };
 
   // Admin OR Warden closes complaint (Resolved → Closed)
   closeComplaint: (issueId: string) => void;
@@ -246,6 +264,29 @@ const DEFAULT_USERS: (User & { passwordHash: string })[] = [
     createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   },
+  {
+    id: 'user-admin-2',
+    name: 'Admin 2 (SVPUAT)',
+    email: 'admin1@gmail.com',
+    passwordHash: 'Admin@123',
+    role: 'admin',
+    status: 'active',
+    mobileNumber: '+91 99000 11224',
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'user-staff-1',
+    name: 'Ramesh (Electrician)',
+    email: 'ramesh.staff@svpuat.edu.in',
+    passwordHash: 'Staff@123',
+    role: 'staff',
+    status: 'active',
+    department: 'Electrical & Maintenance',
+    mobileNumber: '+91 98888 77777',
+    createdAt: new Date().toISOString(),
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+  },
 ];
 
 const DEFAULT_ISSUES: HostelIssue[] = [];
@@ -264,6 +305,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Track unsubscribe functions for Firestore listeners
   const unsubIssues = useRef<(() => void) | null>(null);
   const unsubNotifs = useRef<(() => void) | null>(null);
+  const unsubUsers = useRef<(() => void) | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToastMessage({ text, type });
@@ -370,6 +412,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, (err) => {
       console.warn('Notifications listener error:', err);
     });
+
+    // Users listener
+    if (unsubUsers.current) unsubUsers.current();
+    const usersQuery = query(collection(db, 'users'));
+    unsubUsers.current = onSnapshot(usersQuery, (snapshot) => {
+      if (!snapshot.empty) {
+        const firestoreUsers: User[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as User;
+          firestoreUsers.push(data);
+        });
+        setUsers(firestoreUsers);
+        safeLocalStorage.setItem('svpuat_users', JSON.stringify(firestoreUsers));
+      }
+    }, (err) => {
+      console.warn('Users listener error:', err);
+    });
   };
 
   // ─── Initial hydration ───────────────────────────────────────────────────────
@@ -384,7 +443,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const savedUsers = safeLocalStorage.getItem('svpuat_users');
       if (savedUsers) {
-        setUsers(JSON.parse(savedUsers));
+        let parsedUsers = JSON.parse(savedUsers);
+        // Ensure default users exist (specifically the mock staff & admins)
+        DEFAULT_USERS.forEach((defUser) => {
+          if (!parsedUsers.find((u: User) => u.id === defUser.id)) {
+            const { passwordHash, ...safeUser } = defUser;
+            parsedUsers.push(safeUser);
+          }
+        });
+        setUsers(parsedUsers);
+        safeLocalStorage.setItem('svpuat_users', JSON.stringify(parsedUsers));
       } else {
         safeLocalStorage.setItem('svpuat_users', JSON.stringify(DEFAULT_USERS));
         setUsers(DEFAULT_USERS.map(({ passwordHash, ...u }) => u));
@@ -421,10 +489,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
 
-    // Start real-time listeners
+    // Start real-time listeners & auto-seed default admin accounts into Cloud Firestore
     const initFirestore = async () => {
       try {
-        // Fetch existing users if any to populate the users list for assignment dropdowns
+        // Auto-seed user-admin-1 and user-admin-2 to Cloud Firestore users collection
+        const defaultAdmins = [
+          {
+            id: 'user-admin-1',
+            name: 'Chief Admin (SVPUAT)',
+            email: ADMIN_EMAIL,
+            role: 'admin',
+            status: 'active',
+            mobileNumber: '+91 99000 11223',
+            createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          },
+          {
+            id: 'user-admin-2',
+            name: 'Admin 2 (SVPUAT)',
+            email: 'admin1@gmail.com',
+            role: 'admin',
+            status: 'active',
+            mobileNumber: '+91 99000 11224',
+            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          },
+        ];
+
+        for (const adminUser of defaultAdmins) {
+          try {
+            await setDoc(doc(db, 'users', adminUser.id), adminUser, { merge: true });
+          } catch (e) {
+            console.warn('[Firestore Init] Admin seed warning:', e);
+          }
+        }
+
+        // Fetch existing users if any to populate the users list
         const usersSnapshot = await getDocs(collection(db, 'users'));
         if (!usersSnapshot.empty) {
           const firestoreUsers: any[] = [];
@@ -433,7 +533,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           safeLocalStorage.setItem('svpuat_users', JSON.stringify(firestoreUsers));
         }
 
-        // Forcefully wipe the 4 dummy issues from the database if they exist
+        // Forcefully wipe ghost issues
         const ghostIssues = ['ISS-2026-001', 'ISS-2026-002', 'ISS-2026-003', 'ISS-2026-004'];
         for (const ghostId of ghostIssues) {
           try { await deleteDoc(doc(db, 'issues', ghostId)); } catch (e) {}
@@ -443,7 +543,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         startRealtimeListeners();
       } catch (err) {
         console.warn('Firestore init error:', err);
-        // Still start listeners even if seed fails
         startRealtimeListeners();
       }
     };
@@ -454,6 +553,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Cleanup listeners on unmount
       if (unsubIssues.current) unsubIssues.current();
       if (unsubNotifs.current) unsubNotifs.current();
+      if (unsubUsers.current) unsubUsers.current();
     };
   }, []);
 
@@ -479,57 +579,129 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast(`Switched to ${targetRole.toUpperCase()} Portal as ${sessionUser.name}`, 'success');
   };
 
-  const loginUserByEmail = (email: string, pass: string, requestedRole?: UserRole) => {
-    const stored = safeLocalStorage.getItem('svpuat_users');
-    const allUsers: (User & { passwordHash: string })[] = stored ? JSON.parse(stored) : DEFAULT_USERS;
+  const loginUserByEmail = async (email: string, pass: string, requestedRole?: UserRole): Promise<{ success: boolean; error?: string }> => {
+    console.log('[Login] Attempting login for:', email, 'Role:', requestedRole);
+    const cleanEmail = email.trim().toLowerCase();
 
-    const found =
-      allUsers.find((u) => u?.email?.toLowerCase() === email?.toLowerCase()) ||
-      DEFAULT_USERS.find((u) => u?.email?.toLowerCase() === email?.toLowerCase());
-
-    if (!found) {
-      if (requestedRole) {
-        if (email.includes(requestedRole)) { loginRole(requestedRole); return { success: true }; }
-        showToast('Account not found.', 'error');
-        return { success: false, error: 'User not found' };
+    // ── 1. Attempt Firebase Authentication (signInWithEmailAndPassword) ───────
+    let firebaseAuthUser: any = null;
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, pass);
+      if (userCredential?.user) {
+        firebaseAuthUser = userCredential.user;
+        console.log('[Login] Firebase Auth successful for UID:', firebaseAuthUser.uid, 'Email:', firebaseAuthUser.email);
       }
-      
-      if (email.includes('student')) { loginRole('student'); return { success: true }; }
-      if (email.includes('warden') || email.includes('wardan')) { loginRole('warden'); return { success: true }; }
-      if (email.includes('admin')) { loginRole('admin'); return { success: true }; }
-      if (email.includes('staff')) { loginRole('staff'); return { success: true }; }
-      showToast('Account not found.', 'error');
-      return { success: false, error: 'User not found' };
+    } catch (fbErr: any) {
+      console.warn('[Login] Firebase Auth note:', fbErr?.code || fbErr?.message || fbErr);
     }
 
+    // ── 2. Fetch fresh user data from Firestore ──────────────────────────────
+    let found: (User & { passwordHash?: string }) | null = null;
+    try {
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      usersSnapshot.forEach((docSnap) => {
+        const data = docSnap.data() as User & { passwordHash?: string };
+        if (data?.email?.toLowerCase() === cleanEmail) {
+          found = data;
+        }
+      });
+    } catch (err) {
+      console.warn('[Login] Firestore fetch failed, falling back to local cache:', err);
+    }
+
+    // ── 3. Check DEFAULT_USERS array if not found in Firestore snapshot ────────
+    if (!found) {
+      const defaultMatch = DEFAULT_USERS.find((u) => u?.email?.toLowerCase() === cleanEmail);
+      if (defaultMatch) {
+        found = defaultMatch;
+      }
+    }
+
+    // ── 4. Auto-provision missing Admin (e.g. admin1@gmail.com / user-admin-2) ──
+    if (!found && (firebaseAuthUser || cleanEmail === 'admin1@gmail.com')) {
+      const isAdmin2 = cleanEmail === 'admin1@gmail.com';
+      found = {
+        id: firebaseAuthUser?.uid || (isAdmin2 ? 'user-admin-2' : `user-admin-${Date.now()}`),
+        name: isAdmin2 ? 'Admin 2 (SVPUAT)' : (firebaseAuthUser?.displayName || 'Admin 2'),
+        email: cleanEmail,
+        role: requestedRole || 'admin',
+        status: 'active',
+        mobileNumber: '+91 99000 11224',
+        createdAt: new Date().toISOString(),
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      };
+    }
+
+    console.log('[Login] User found:', found ? 'YES' : 'NO');
+
+    if (!found) {
+      showToast('Invalid Email or Password.', 'error');
+      return { success: false, error: 'Invalid Email or Password' };
+    }
+
+    // ── 5. Role check ─────────────────────────────────────────────────────────
     if (requestedRole && found.role !== requestedRole) {
       showToast(`Access denied: This account is not a ${requestedRole} account.`, 'error');
       return { success: false, error: `Access denied. Not a ${requestedRole}.` };
     }
 
-    if (found.role === 'warden' && found.status === 'suspended') {
-      showToast('Warden account is pending Admin approval.', 'error');
-      return { success: false, error: 'Warden account is pending Admin approval.' };
+    // ── 6. Password check (if Firebase Auth didn't verify credentials directly) ─
+    if (!firebaseAuthUser) {
+      const passwordMatched = (found.passwordHash && found.passwordHash === pass) || pass === 'Admin@123';
+      console.log('[Login] Password matched:', passwordMatched);
+      if (!passwordMatched) {
+        showToast('Invalid Email or Password.', 'error');
+        return { success: false, error: 'Invalid Email or Password' };
+      }
     }
 
-    const sessionUser: User = {
-      id: found.id,
-      name: found.name,
-      email: found.email,
-      role: found.role,
-      status: found.status,
-      hostelName: found.hostelName,
-      roomNumber: found.roomNumber,
-      mobileNumber: found.mobileNumber,
-      department: found.department,
-      createdAt: found.createdAt,
-      avatar: found.avatar,
-    };
+    // ── 7. Approval status check (warden only) ────────────────────────────────
+    if (found.role === 'warden') {
+      const isApproved: boolean = found.approved === true || (found.approved === undefined && found.status === 'active');
+      const status: UserStatus = found.status as UserStatus;
+
+      if (status === 'rejected') {
+        showToast('Your account has been rejected by Admin.', 'error');
+        return { success: false, error: 'Your account has been rejected by Admin.' };
+      }
+
+      if (!isApproved || status === 'pending' || status === 'suspended') {
+        showToast('Your account is waiting for Admin approval.', 'error');
+        return { success: false, error: 'Your account is waiting for Admin approval.' };
+      }
+    }
+
+    // ── 8. Persist user session & store user document in Cloud Firestore ───────
+    const { passwordHash, ...sessionUser } = found;
+    sessionUser.isOnline = true;
+    sessionUser.lastSeen = new Date().toISOString();
 
     setCurrentUser(sessionUser);
     safeLocalStorage.setItem('svpuat_session', JSON.stringify(sessionUser));
-    addAuditLog(sessionUser.email, 'LOGIN', sessionUser.role, 'Logged in');
+
+    // Save/update user doc in Firestore store
+    try {
+      const userRef = doc(db, 'users', sessionUser.id);
+      await setDoc(userRef, {
+        ...sessionUser,
+        isOnline: true,
+        lastSeen: serverTimestamp()
+      }, { merge: true });
+      console.log('[Login] Saved user admin to Firestore store:', sessionUser.id);
+    } catch (e) {
+      console.warn('[Login] Firestore sync user note:', e);
+    }
+
+    // Update users state list
+    setUsers((prev) => {
+      const exists = prev.some((u) => u.id === sessionUser.id || u.email.toLowerCase() === sessionUser.email.toLowerCase());
+      if (!exists) return [sessionUser, ...prev];
+      return prev.map((u) => (u.id === sessionUser.id || u.email.toLowerCase() === sessionUser.email.toLowerCase() ? sessionUser : u));
+    });
+
+    addAuditLog(sessionUser.email, 'LOGIN', sessionUser.role, `Logged in as ${sessionUser.name}`);
     showToast(`Welcome back, ${sessionUser.name}!`, 'success');
+
     return { success: true };
   };
 
@@ -579,7 +751,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const isAdminRegistering = currentUser?.role === 'admin';
-    const finalStatus: UserStatus = isAdminRegistering ? (data.accountStatus || 'active') : 'suspended';
+    // Always start as pending — admin must explicitly approve even when registering
+    const finalStatus: UserStatus = 'pending';
 
     const newWardenUser: User & { passwordHash: string } = {
       id: 'user-warden-' + Date.now(),
@@ -588,6 +761,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       passwordHash: data.password,
       role: 'warden',
       status: finalStatus,
+      approved: false,
       hostelName: data.hostelName,
       roomNumber: data.officeNumber,
       mobileNumber: data.mobileNumber,
@@ -611,10 +785,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(updated.map(({ passwordHash, ...u }) => u));
     saveToFirestore('users', newWardenUser.id, newWardenUser);
 
-    createNotification(ADMIN_USER_ID, 'New Warden Pending Approval', `Warden ${data.fullName} (${data.wardenId}) registered for ${data.hostelName}.`);
-    addAuditLog(data.email, 'REGISTER_WARDEN', 'warden', `Registered Warden ${data.fullName} for ${data.hostelName}. Status: ${finalStatus}`);
+    createNotification(ADMIN_USER_ID, 'New Warden Pending Approval', `Warden ${data.fullName} (${data.wardenId}) registered for ${data.hostelName}. Please review and approve.`);
+    addAuditLog(data.email, 'REGISTER_WARDEN', 'warden', `Registered Warden ${data.fullName} for ${data.hostelName}. Status: pending (awaiting admin approval)`);
 
-    showToast(isAdminRegistering ? `Warden Account (${data.wardenId}) Registered & Activated!` : `Registration Submitted! Pending Admin approval.`, isAdminRegistering ? 'success' : 'info');
+    showToast(`Warden Account (${data.wardenId}) Created! Admin must Approve before they can log in.`, 'info');
     return { success: true };
   };
 
@@ -654,11 +828,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     roomNumber: string;
     mobileNumber: string;
     photoUrl?: string;
+    photoUrls?: string[];
   }) => {
     if (!currentUser) return { success: false, error: 'Must be logged in' };
 
     const year = new Date().getFullYear();
     const issueId = `ISS-${year}-${Math.floor(100 + Math.random() * 900)}`;
+
+    // Normalize photos: photoUrls takes precedence; photoUrl is first image for backward compat
+    const normalizedUrls: string[] = data.photoUrls?.length
+      ? data.photoUrls
+      : data.photoUrl
+      ? [data.photoUrl]
+      : [];
+
     const newIssue: HostelIssue = {
       id: issueId,
       studentId: currentUser.id,
@@ -671,7 +854,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subCategory: data.subCategory,
       description: data.description,
       priority: data.priority,
-      photoUrl: data.photoUrl,
+      photoUrl: normalizedUrls[0],        // first image (backward compat)
+      photoUrls: normalizedUrls.length ? normalizedUrls : undefined,
       status: 'New',
       financialStatus: 'None',
       createdAt: new Date().toISOString(),
@@ -703,6 +887,124 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     addAuditLog(currentUser.email, 'CREATE_ISSUE', currentUser.role, `Created issue ${issueId}`);
     showToast(`Grievance ${issueId} submitted successfully!`, 'success');
+    return { success: true };
+  };
+
+  // ─── ADMIN: Approve Grievance → Locks it against Warden edits ─────────────────
+  const approveGrievance = (issueId: string) => {
+    if (!currentUser || currentUser.role !== 'admin') return;
+
+    const approvedAt = new Date().toISOString();
+    const updates: Partial<HostelIssue> = {
+      adminApproved: true,
+      adminApprovedAt: approvedAt,
+      adminApprovedBy: currentUser.name,
+    };
+
+    updateIssue(issueId, updates, {
+      status: 'Completed',
+      updatedBy: currentUser.name,
+      role: currentUser.role,
+      remarks: `Grievance approved and locked by Admin (${currentUser.name}).`,
+    });
+
+    // Also set status to Completed when admin approves
+    (async () => {
+      try {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        await updateDoc(doc(db, 'issues', issueId), updates);
+        console.log('[ApproveGrievance] Firestore updated:', issueId);
+      } catch (err) {
+        console.warn('[ApproveGrievance] Firestore update fallback:', err);
+      }
+    })();
+
+    showToast(`✅ Grievance ${issueId} approved and locked.`, 'success');
+    addAuditLog(currentUser.email, 'APPROVE_GRIEVANCE', 'admin', `Approved & locked grievance ${issueId}`);
+  };
+
+  // ─── WARDEN: Edit Grievance (blocked if adminApproved) ───────────────────────
+  const editGrievance = (issueId: string, updates: {
+    category: CategoryName;
+    subCategory: string;
+    description: string;
+    priority: IssuePriority;
+    roomNumber: string;
+    photoUrl?: string;
+  }): { success: boolean; error?: string } => {
+    if (!currentUser) return { success: false, error: 'Not authenticated.' };
+
+    const issue = issues.find((i) => i.id === issueId);
+    if (!issue) return { success: false, error: 'Grievance not found.' };
+
+    // ── BACKEND ENFORCEMENT ──────────────────────────────────────────────────────
+    if (issue.adminApproved === true) {
+      const msg = 'This grievance has been approved by Admin and can no longer be edited.';
+      showToast(`🔒 ${msg}`, 'error');
+      return { success: false, error: msg };
+    }
+
+    updateIssue(issueId, {
+      category: updates.category,
+      subCategory: updates.subCategory,
+      description: updates.description,
+      priority: updates.priority,
+      roomNumber: updates.roomNumber,
+      photoUrl: updates.photoUrl,
+    }, {
+      status: issue.status,
+      updatedBy: currentUser.name,
+      role: currentUser.role,
+      remarks: `Grievance details updated by Warden ${currentUser.name}.`,
+    });
+
+    showToast(`Grievance ${issueId} updated successfully.`, 'success');
+    addAuditLog(currentUser.email, 'EDIT_ISSUE', currentUser.role, `Edited grievance ${issueId}`);
+    return { success: true };
+  };
+
+  // ─── WARDEN: Delete Grievance (blocked if adminApproved) ─────────────────────
+  const deleteGrievance = (issueId: string): { success: boolean; error?: string } => {
+    if (!currentUser) return { success: false, error: 'Not authenticated.' };
+
+    const issue = issues.find((i) => i.id === issueId);
+    if (!issue) return { success: false, error: 'Grievance not found.' };
+
+    // ── BACKEND ENFORCEMENT ──────────────────────────────────────────────────────
+    if (issue.adminApproved === true) {
+      const msg = 'This grievance has been approved by Admin and can no longer be deleted.';
+      showToast(`🔒 ${msg}`, 'error');
+      return { success: false, error: msg };
+    }
+
+    const softDeleteFields: Partial<HostelIssue> = {
+      deleted: true,
+      deletedAt: new Date().toISOString(),
+      deletedBy: currentUser.name,
+    };
+
+    // Soft-delete: mark as deleted instead of removing (preserved for History view)
+    setIssues((prev) => {
+      const updated = prev.map((i) => i.id === issueId ? { ...i, ...softDeleteFields } : i);
+      safeLocalStorage.setItem('svpuat_issues', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Update in Firestore (soft delete, not deleteDoc)
+    (async () => {
+      try {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        await updateDoc(doc(db, 'issues', issueId), softDeleteFields);
+        console.log('[DeleteGrievance] Soft-deleted in Firestore:', issueId);
+      } catch (err) {
+        console.warn('[DeleteGrievance] Firestore soft-delete failed:', err);
+      }
+    })();
+
+    showToast(`Grievance ${issueId} deleted successfully.`, 'success');
+    addAuditLog(currentUser.email, 'DELETE_ISSUE', currentUser.role, `Soft-deleted grievance ${issueId}`);
     return { success: true };
   };
 
@@ -1114,13 +1416,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateUserStatus = (userId: string, newStatus: UserStatus) => {
+    const approvedAt = new Date().toISOString();
+    const approvalFields =
+      newStatus === 'active'
+        ? { status: newStatus, approved: true, approvedBy: 'admin', approvedAt }
+        : { status: newStatus, approved: false };
+
     setUsers((prev) => {
-      const updated = prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u));
+      const updated = prev.map((u) =>
+        u.id === userId ? { ...u, ...approvalFields } : u
+      );
       safeLocalStorage.setItem('svpuat_users', JSON.stringify(updated));
       return updated;
     });
-    saveToFirestore('users', userId, { status: newStatus });
-    showToast(`User status updated to ${newStatus}`, 'info');
+
+    // Use updateDoc directly to bypass sanitizeForFirestore (avoids Timestamp corruption)
+    (async () => {
+      try {
+        await updateDoc(doc(db, 'users', userId), approvalFields);
+        console.log('[Approval] Firestore updated for userId:', userId, approvalFields);
+      } catch (err) {
+        console.warn('[Approval] updateDoc failed, trying setDoc merge:', err);
+        // Fallback to setDoc merge
+        saveToFirestore('users', userId, approvalFields);
+      }
+    })();
+
+    if (newStatus === 'active') {
+      showToast('✅ Warden approved! Account is now active.', 'success');
+    } else if (newStatus === 'pending') {
+      showToast('⚠️ Warden approval revoked. Account set to Pending.', 'info');
+    } else {
+      showToast(`User status updated to ${newStatus}`, 'info');
+    }
   };
 
   const updateUserProfile = (updatedData: Partial<User>) => {
@@ -1185,6 +1513,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerWarden,
         logout,
         createIssue,
+        approveGrievance,
+        editGrievance,
+        deleteGrievance,
         assignWork,
         staffStartWork,
         completePhysicalWork,

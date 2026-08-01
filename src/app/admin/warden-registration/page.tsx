@@ -46,7 +46,7 @@ export default function AdminWardenRegistrationPage() {
 
   const totalCount = wardens.length;
   const activeCount = wardens.filter((w) => w.status === 'active').length;
-  const pendingCount = wardens.filter((w) => w.status === 'suspended').length;
+  const pendingCount = wardens.filter((w) => w.status === 'suspended' || w.status === 'pending' || w.approved === false).length;
 
   const openEdit = (warden: User) => {
     setEditingWarden(warden);
@@ -253,15 +253,21 @@ export default function AdminWardenRegistrationPage() {
                   </div>
 
                   <div className="flex items-center justify-between border-t border-purple-500/10 pt-3">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      warden.status === 'active'
-                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-amber-950 text-amber-400 border border-amber-500/30'
+                    {/* Status Badge */}
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                      warden.status === 'active' && warden.approved !== false
+                        ? 'bg-emerald-950 text-emerald-400 border-emerald-500/30'
+                        : warden.status === 'rejected'
+                        ? 'bg-rose-950 text-rose-400 border-rose-500/30'
+                        : 'bg-amber-950 text-amber-400 border-amber-500/30'
                     }`}>
-                      {warden.status === 'active' ? 'Active' : 'Pending Approval'}
+                      <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                        warden.status === 'active' && warden.approved !== false ? 'bg-emerald-400' : warden.status === 'rejected' ? 'bg-rose-400' : 'bg-amber-400'
+                      }`} />
+                      {warden.status === 'active' && warden.approved !== false ? '✓ Active' : warden.status === 'rejected' ? '✗ Rejected' : '⏳ Pending Approval'}
                     </span>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       {/* Edit Button */}
                       <button
                         onClick={() => openEdit(warden)}
@@ -271,21 +277,38 @@ export default function AdminWardenRegistrationPage() {
                         <Pencil className="w-3.5 h-3.5" /> Edit
                       </button>
 
-                      {warden.status === 'suspended' ? (
-                        <button
-                          onClick={() => updateUserStatus(warden.id, 'active')}
-                          className="px-3 py-1.5 rounded-lg text-[10px] font-black text-white bg-emerald-600 hover:bg-emerald-500 transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Approve
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => updateUserStatus(warden.id, 'suspended')}
-                          className="px-3 py-1.5 rounded-lg text-[10px] font-semibold text-amber-300 hover:text-white bg-amber-950/20 hover:bg-amber-900/40 border border-amber-500/20 transition-all cursor-pointer"
-                        >
-                          Suspend
-                        </button>
-                      )}
+                      {/* Approve / Revoke Toggle Button */}
+                      <button
+                        onClick={() => {
+                          const isCurrentlyApproved = warden.status === 'active' && warden.approved !== false;
+                          if (isCurrentlyApproved) {
+                            updateUserStatus(warden.id, 'pending');
+                          } else {
+                            updateUserStatus(warden.id, 'active');
+                          }
+                        }}
+                        title={warden.status === 'active' && warden.approved !== false ? 'Click to Revoke Approval' : 'Click to Approve'}
+                        className={`relative px-4 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-2 cursor-pointer shadow-md ${
+                          warden.status === 'active' && warden.approved !== false
+                            ? 'bg-emerald-600 hover:bg-rose-600 text-white group'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        }`}
+                      >
+                        {warden.status === 'active' && warden.approved !== false ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 group-hover:hidden" />
+                            <span className="group-hover:hidden">Approved</span>
+                            <span className="hidden group-hover:inline text-[10px]">Revoke?</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Approve
+                          </>
+                        )}
+                      </button>
+
+                      {/* Delete Button */}
                       <button
                         onClick={() => deleteUser(warden.id)}
                         className="p-1.5 rounded-lg text-rose-400 hover:text-white hover:bg-rose-950/40 transition-all cursor-pointer"
@@ -295,6 +318,7 @@ export default function AdminWardenRegistrationPage() {
                       </button>
                     </div>
                   </div>
+
                 </div>
               ))}
             </div>

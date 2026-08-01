@@ -4,15 +4,45 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ─────────────────────────────────────────────────────────────────────────
-    // NOTE: This project uses email-based custom auth (not Firebase Auth tokens).
-    // Rules are permissive for development and testing. 
-    // These rules will automatically expire to prevent long-term security risks.
+    // SVPUAT Hostel Management System
+    // Auth strategy: Custom email/password (no Firebase Auth tokens)
+    // Because Firebase Auth is NOT used, rules cannot check request.auth.
+    // All reads and writes are permitted from the app itself.
     // ─────────────────────────────────────────────────────────────────────────
 
-    match /{document=**} {
-      // Allow read/write access for all users for development purposes.
-      // Set to expire on January 1, 2028 to satisfy Firebase security checks.
-      allow read, write: if request.time < timestamp.date(2028, 1, 1);
+    // Users collection — warden registration, approval, login lookup
+    match /users/{userId} {
+      allow read, write: if true;
     }
+
+    // Issues collection — hostel grievances
+    match /issues/{issueId} {
+      allow read, write: if true;
+    }
+
+    // Notifications collection — admin/warden notifications
+    match /notifications/{notifId} {
+      allow read, write: if true;
+    }
+
+    // Chat System collections
+    match /chatRooms/{roomId} {
+      allow read, write: if true;
+      
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Audit logs (if enabled)
+    match /audit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    // Catch-all for any other collections used during development
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2030, 1, 1);
+    }
+
   }
 }

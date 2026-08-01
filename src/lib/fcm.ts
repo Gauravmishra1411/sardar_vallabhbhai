@@ -34,6 +34,11 @@ async function getMessagingInstance(): Promise<Messaging | null> {
  */
 export async function requestFCMToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
+  
+  if (!VAPID_KEY || VAPID_KEY.trim() === '') {
+    console.warn('[FCM] Skipping token request because NEXT_PUBLIC_FIREBASE_VAPID_KEY is missing.');
+    return null;
+  }
 
   try {
     const permission = await Notification.requestPermission();
@@ -61,7 +66,7 @@ export async function requestFCMToken(): Promise<string | null> {
       return null;
     }
   } catch (err) {
-    console.error('[FCM] Error getting token:', err);
+    console.warn('[FCM] Error getting token (ignored in dev):', err);
     return null;
   }
 }
