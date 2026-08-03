@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTheme } from '@/context/ThemeContext';
 import { ISSUE_CATEGORIES, CategoryName, IssuePriority } from '@/types/auth';
 import { SVPUAT_HOSTELS } from '@/constants/hostels';
 import { LayoutDashboard, Users, FileCheck, ShieldCheck, LogOut, Lock, Sparkles, UserCheck, Building2, PlusCircle, X, Camera, User, AlertTriangle, BarChart3, Bell, Menu } from 'lucide-react';
@@ -16,6 +17,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const { currentUser, logout, isLoading, createIssue, showToast } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   // Initialize FCM Web Push for this admin
   useFCM({
@@ -238,10 +241,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (isLoading || !currentUser || currentUser.role !== 'admin') {
     return (
-      <div className="min-h-screen bg-[#070a12] flex items-center justify-center text-white">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--bg-main)' }}
+      >
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-          <p className="text-sm text-gray-400 font-medium">Verifying Administrator Privileges...</p>
+          <p className="text-sm font-medium" style={{ color: 'var(--text-description)' }}>Verifying Administrator Privileges...</p>
         </div>
       </div>
     );
@@ -260,18 +266,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { id: 'profile',          label: 'Edit Profile',         href: '/admin/profile',   icon: User },
   ];
 
+  const sidebarBg     = isDark ? '#0a0f1c' : '#FFFFFF';
+  const sidebarBorder = isDark ? 'rgba(168,85,247,0.2)' : '#E5E7EB';
+  const navText       = isDark ? '#9CA3AF' : '#6B7280';
+  const navHoverBg    = isDark ? 'rgba(255,255,255,0.08)' : '#EEF2FF';
+  const navHoverText  = isDark ? '#FFFFFF' : '#111827';
+
   return (
-    <div className="min-h-screen bg-[#070a12] text-white flex flex-col md:flex-row relative">
-      
+    <div
+      className="min-h-screen flex flex-col md:flex-row relative"
+      style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-normal)' }}
+    >
+
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-[#070a12] border-b border-purple-500/20 sticky top-0 z-40">
+      <div
+        className="md:hidden flex items-center justify-between p-4 border-b sticky top-0 z-40"
+        style={{ backgroundColor: sidebarBg, borderColor: sidebarBorder }}
+      >
         <div className="flex items-center gap-3">
           <img src="/logo_neww.png" alt="SVPUAT Logo" className="w-10 h-10 object-contain" />
-          <h1 className="font-bold text-sm text-white">Admin Control</h1>
+          <h1 className="font-bold text-sm" style={{ color: 'var(--text-heading)' }}>Admin Control</h1>
         </div>
-        <button type="button" onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-purple-900/40 rounded-lg text-purple-300">
-          <Menu className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button type="button" onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 rounded-lg"
+            style={{ background: 'rgba(139,92,246,0.15)', color: 'var(--primary)' }}
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
       </div>
 
       {/* Mobile Backdrop */}
@@ -280,23 +304,45 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Admin Sidebar */}
-      <aside className={`fixed inset-y-0 z-50 w-72 md:w-64 glass-panel border-r border-purple-500/20 flex flex-col shrink-0 overflow-y-auto max-h-screen transition-all duration-300 ease-in-out bg-[#0a0f1c] ${isMobileMenuOpen ? 'left-0' : '-left-full'} md:relative md:left-0`}>
+      <aside
+        className={`fixed inset-y-0 z-50 w-72 md:w-64 flex flex-col shrink-0 overflow-y-auto max-h-screen transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'left-0' : '-left-full'
+        } md:relative md:left-0`}
+        style={{ backgroundColor: sidebarBg, borderRight: `1px solid ${sidebarBorder}` }}
+      >
         {/* Brand */}
-        <div className="p-6 border-b border-purple-500/20 flex flex-col gap-4 relative">
-          <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white md:hidden">
+        <div
+          className="p-5 flex flex-col gap-3 relative"
+          style={{ borderBottom: `1px solid ${sidebarBorder}` }}
+        >
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="absolute top-3 right-3 p-1.5 rounded-lg md:hidden"
+            style={{ color: 'var(--text-description)' }}
+          >
             <X className="w-5 h-5" />
           </button>
           <div className="flex items-center">
-            <img src="/logo_neww.png" alt="SVPUAT Logo" className="w-32 h-auto object-contain" />
+            <img src="/logo_neww.png" alt="SVPUAT Logo" className="w-28 h-auto object-contain" />
           </div>
           <div>
-            <h1 className="font-bold text-base text-white">Admin Control</h1>
-            <span className="text-[10px] text-emerald-400 uppercase font-semibold tracking-widest">Restricted Portal</span>
+            <h1 className="font-bold text-base" style={{ color: 'var(--text-heading)' }}>Admin Control</h1>
+            <span className="text-[10px] text-emerald-500 uppercase font-semibold tracking-widest">Restricted Portal</span>
+          </div>
+          {/* Theme Toggle in sidebar */}
+          <div className="mt-1">
+            <ThemeToggle />
           </div>
         </div>
 
         {/* Admin Card */}
-        <div className="p-4 mx-4 my-4 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center gap-3">
+        <div
+          className="p-4 mx-4 my-4 rounded-xl flex items-center gap-3"
+          style={{
+            backgroundColor: isDark ? 'rgba(139,92,246,0.12)' : '#F3E8FF',
+            border: `1px solid ${isDark ? 'rgba(139,92,246,0.25)' : '#DDD6FE'}`,
+          }}
+        >
           <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0">
             {currentUser.avatar ? (
               <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
@@ -305,8 +351,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
           </div>
           <div className="overflow-hidden">
-            <h2 className="text-sm font-semibold text-white truncate">{currentUser.name}</h2>
-            <span className="inline-block text-[9px] uppercase font-bold text-purple-300 bg-purple-900/80 px-2 py-0.5 rounded border border-purple-500/30">
+            <h2 className="text-sm font-semibold truncate" style={{ color: 'var(--text-heading)' }}>{currentUser.name}</h2>
+            <span
+              className="inline-block text-[9px] uppercase font-bold px-2 py-0.5 rounded"
+              style={{
+                backgroundColor: isDark ? 'rgba(139,92,246,0.3)' : '#EDE9FE',
+                color: isDark ? '#C084FC' : '#7C3AED',
+              }}
+            >
               Super Admin
             </span>
           </div>
@@ -325,7 +377,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-4 space-y-1.5 py-2 mt-2">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-purple-400 px-3 mb-2">Admin Management</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider px-3 mb-2" style={{ color: 'var(--primary)' }}>Admin Management</div>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeNavId === item.id;
@@ -334,28 +386,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.id}
                 href={item.href}
                 onClick={() => handleNavClick(item.id)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
+                style={{
+                  backgroundColor: isActive ? 'var(--primary)' : 'transparent',
+                  color: isActive ? '#ffffff' : navText,
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = navHoverBg;
+                    (e.currentTarget as HTMLElement).style.color = navHoverText;
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                    (e.currentTarget as HTMLElement).style.color = navText;
+                  }
+                }}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : 'var(--primary)' }} />
                 {item.label}
               </Link>
             );
           })}
-
-
         </nav>
 
         {/* Quick Switch & Logout */}
-        <div className="p-4 border-t border-purple-500/20 space-y-3">
-
-
+        <div className="p-4" style={{ borderTop: `1px solid ${sidebarBorder}` }}>
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-950/30 hover:bg-rose-900/50 text-rose-300 border border-rose-500/30 text-xs font-medium transition-all"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium transition-all"
+            style={{
+              backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#FEF2F2',
+              border: '1px solid rgba(239,68,68,0.3)',
+              color: isDark ? '#F87171' : '#DC2626',
+            }}
           >
             <LogOut className="w-4 h-4" />
             Sign Out Admin
@@ -366,21 +431,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Viewport */}
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Header */}
-        <header className="h-16 border-b border-purple-500/20 bg-[#070a12]/80 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
+        <header
+          className="h-16 border-b px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30"
+          style={{
+            backgroundColor: isDark ? 'rgba(10,15,28,0.85)' : 'rgba(255,255,255,0.95)',
+            borderColor: sidebarBorder,
+            backdropFilter: 'blur(12px)',
+          }}
+        >
           <div className="flex items-center gap-3">
-            <span className="text-base md:text-lg font-bold text-white tracking-wide"> </span>
-            <span className="text-purple-500/40">|</span>
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className="text-purple-400 font-semibold">Admin Panel</span>
+            <span className="text-base md:text-lg font-bold" style={{ color: 'var(--text-heading)' }}> </span>
+            <span style={{ color: 'var(--border-color)' }}>|</span>
+            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-description)' }}>
+              <span className="font-semibold" style={{ color: 'var(--primary)' }}>Admin Panel</span>
               <span>/</span>
-              <span className="text-white capitalize font-semibold">{pathname.split('/').pop() || 'Dashboard'}</span>
+              <span className="capitalize font-semibold" style={{ color: 'var(--text-heading)' }}>
+                {pathname.split('/').pop() || 'Dashboard'}
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-purple-300 text-xs font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+              style={{
+                backgroundColor: isDark ? 'rgba(139,92,246,0.15)' : '#EDE9FE',
+                border: `1px solid ${isDark ? 'rgba(139,92,246,0.35)' : '#DDD6FE'}`,
+                color: isDark ? '#C084FC' : '#7C3AED',
+              }}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
               Administrative Mode
             </span>
           </div>

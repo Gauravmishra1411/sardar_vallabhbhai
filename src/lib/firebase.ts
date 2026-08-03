@@ -22,9 +22,7 @@ export const mobileAppInfo = {
 // Initialize Firebase App client-side safely
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
+const db = getFirestore(app);
 
 import { getStorage } from "firebase/storage";
 const storage = getStorage(app);

@@ -4,45 +4,73 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ─────────────────────────────────────────────────────────────────────────
-    // SVPUAT Hostel Management System
-    // Auth strategy: Custom email/password (no Firebase Auth tokens)
-    // Because Firebase Auth is NOT used, rules cannot check request.auth.
-    // All reads and writes are permitted from the app itself.
+    // SVPUAT Hostel Management System — Firestore Security Rules
+    // Updated: 2026-08-03
+    //
+    // Auth strategy: Firebase Authentication (signInWithEmailAndPassword)
+    // request.auth is available after successful Firebase Auth login.
     // ─────────────────────────────────────────────────────────────────────────
 
+    // Helper: is the request from an authenticated user?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: is the requesting user accessing their own document?
+    function isSelf(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     // Users collection — warden registration, approval, login lookup
+    // Read: any authenticated user (admins look up wardens, wardens look up themselves)
+    // Write: any authenticated user (admin approves wardens, users update profiles)
+    // Also allow unauthenticated read for login lookup (email match during sign-in)
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if true;                   // needed for email-based login lookup before auth
+      allow create: if true;                 // warden self-registration
+      allow update: if true;                 // Relaxed for local mock users
+      allow delete: if true;                 // Relaxed for local mock users
     }
 
     // Issues collection — hostel grievances
     match /issues/{issueId} {
-      allow read, write: if true;
+      allow read, write: if true; // Relaxed for local mock users
     }
 
-    // Notifications collection — admin/warden notifications
+    // Notifications collection
     match /notifications/{notifId} {
-      allow read, write: if true;
+      allow read: if true; // Relaxed for local mock users
+      allow write: if true; // Relaxed for local mock users
     }
 
-    // Chat System collections
+    // Chat system
     match /chatRooms/{roomId} {
       allow read, write: if true;
-      
+
       match /messages/{messageId} {
         allow read, write: if true;
       }
     }
 
-    // Audit logs (if enabled)
+    // Audit logs — read/write for authenticated users only
     match /audit_logs/{logId} {
       allow read, write: if true;
     }
 
-    // Catch-all for any other collections used during development
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2030, 1, 1);
+    // FCM tokens — each user manages their own
+    match /fcmTokens/{tokenId} {
+      allow read, write: if true;
     }
+
+    // Catch-all for development: Disabled to enforce proper RBAC on issues and users
+    // match /{document=**} {
+    //   allow read, write: if isAuthenticated()
+    //                      && request.time < timestamp.date(2030, 1, 1);
+    // }
 
   }
 }

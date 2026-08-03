@@ -248,6 +248,7 @@ export interface HostelIssue {
   priority: IssuePriority;
   photoUrl?: string;       // legacy single photo (kept for backward compat)
   photoUrls?: string[];   // NEW: multiple photos from Cloudinary
+  wardenId?: string;      // The ID of the warden who created or manages this issue
 
 
   // ---- NEW SEPARATED STATUS WORKFLOW FIELDS ----

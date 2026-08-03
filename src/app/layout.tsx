@@ -1,18 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { Toast } from "@/components/Toast";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -34,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full dark antialiased`}>
+    <html lang="en" className={`${inter.variable} h-full dark antialiased`}>
       <head>
         <link rel="icon" href="/fabicon.png?v=2" type="image/png" />
         <link rel="icon" href="/favicon.ico?v=2" />
@@ -70,7 +67,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body suppressHydrationWarning className="min-h-full flex flex-col bg-[#0b0f19] text-gray-100 selection:bg-indigo-500 selection:text-white transition-colors duration-300">
+      <body suppressHydrationWarning className="min-h-full flex flex-col selection:bg-purple-500 selection:text-white transition-colors duration-300">
         <ThemeProvider>
           <AuthProvider>
             {children}

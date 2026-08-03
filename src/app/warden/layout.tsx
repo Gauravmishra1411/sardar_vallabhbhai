@@ -4,15 +4,18 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Building2, ShieldCheck, LogOut, LayoutDashboard, ArrowRight, User, Menu, X } from 'lucide-react';
+import { Building2, LogOut, ArrowRight, User, Menu, X, Sun, Moon } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTheme } from '@/context/ThemeContext';
 import { useFCM } from '@/hooks/useFCM';
 
 export default function WardenLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { currentUser, logout, isLoading, showToast } = useAuth();
+  const { theme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const isDark = theme === 'dark';
 
   // Initialize FCM Web Push for this warden
   useFCM({
@@ -35,7 +38,10 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
 
   if (isRegisterRoute) {
     return (
-      <div className="min-h-screen bg-[#070a12] text-white p-4 md:p-8">
+      <div
+        className="min-h-screen p-4 md:p-8"
+        style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-normal)' }}
+      >
         {children}
       </div>
     );
@@ -43,10 +49,15 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
 
   if (isLoading || !currentUser || (currentUser.role !== 'warden' && currentUser.role !== 'admin')) {
     return (
-      <div className="min-h-screen bg-[#070a12] flex items-center justify-center text-white">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--bg-main)' }}
+      >
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-          <p className="text-sm text-gray-400 font-medium">Verifying Warden Privileges...</p>
+          <p className="text-sm font-medium" style={{ color: 'var(--text-description)' }}>
+            Verifying Warden Privileges...
+          </p>
         </div>
       </div>
     );
@@ -54,96 +65,183 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
 
   const wardenHostel = currentUser.hostelName || 'Raman Hostel';
 
+  const sidebarBg    = isDark ? '#0a0f1c' : '#FFFFFF';
+  const sidebarBorder= isDark ? 'rgba(168,85,247,0.2)' : '#E5E7EB';
+  const mobileBg     = isDark ? '#0a0f1c' : '#FFFFFF';
+  const navInactive  = isDark ? 'rgba(255,255,255,0.05)' : 'transparent';
+  const navText      = isDark ? '#9CA3AF' : '#6B7280';
+  const navHoverBg   = isDark ? 'rgba(255,255,255,0.08)' : '#EEF2FF';
+  const navHoverText = isDark ? '#FFFFFF' : '#111827';
+
   return (
-    <div className="min-h-screen bg-[#070a12] text-white flex flex-col md:flex-row relative">
-      
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-[#070a12] border-b border-purple-500/20 sticky top-0 z-40">
+    <div
+      className="min-h-screen flex flex-col md:flex-row relative"
+      style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-normal)' }}
+    >
+      {/* ── Mobile Header ── */}
+      <div
+        className="md:hidden flex items-center justify-between p-4 border-b sticky top-0 z-40"
+        style={{ backgroundColor: mobileBg, borderColor: sidebarBorder }}
+      >
         <div className="flex items-center gap-3">
           <img src="/logo_neww.png" alt="SVPUAT Logo" className="w-10 h-10 object-contain" />
-          <h1 className="font-bold text-sm text-white">Warden Portal</h1>
+          <h1 className="font-bold text-sm" style={{ color: 'var(--text-heading)' }}>
+            Warden Portal
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <button type="button" onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-purple-900/40 rounded-lg text-purple-300">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 rounded-lg"
+            style={{ background: 'rgba(139,92,246,0.15)', color: 'var(--primary)' }}
+          >
             <Menu className="w-6 h-6" />
           </button>
         </div>
       </div>
 
-      {/* Mobile Backdrop */}
+      {/* ── Mobile Backdrop ── */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/80 z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/70 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
       )}
 
-      {/* Warden Sidebar */}
-      <aside className={`fixed inset-y-0 z-50 w-72 md:w-64 glass-panel border-r border-purple-500/20 flex flex-col shrink-0 overflow-y-auto max-h-screen transition-all duration-300 ease-in-out bg-[#0a0f1c] ${isMobileMenuOpen ? 'left-0' : '-left-full'} md:relative md:left-0`}>
-        <div className="p-6 border-b border-purple-500/20 flex flex-col gap-4 relative">
-          <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white md:hidden">
+      {/* ── Sidebar ── */}
+      <aside
+        className={`fixed inset-y-0 z-50 w-72 md:w-64 flex flex-col shrink-0 overflow-y-auto max-h-screen transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'left-0' : '-left-full'
+        } md:relative md:left-0`}
+        style={{ backgroundColor: sidebarBg, borderRight: `1px solid ${sidebarBorder}` }}
+      >
+        {/* Brand */}
+        <div
+          className="p-5 flex flex-col gap-3 relative"
+          style={{ borderBottom: `1px solid ${sidebarBorder}` }}
+        >
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="absolute top-3 right-3 p-1.5 rounded-lg md:hidden"
+            style={{ color: 'var(--text-description)' }}
+          >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex items-center">
-            <img src="/logo_neww.png" alt="SVPUAT Logo" className="w-32 h-auto object-contain" />
+
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <img src="/logo_neww.png" alt="SVPUAT Logo" className="w-28 h-auto object-contain" />
           </div>
+
+          {/* Title */}
           <div>
-            <h1 className="font-bold text-base text-white">Warden Portal</h1>
-            <span className="text-[10px] text-emerald-400 uppercase font-semibold tracking-widest">{wardenHostel}</span>
+            <h1 className="font-bold text-base" style={{ color: 'var(--text-heading)' }}>
+              Warden Portal
+            </h1>
+            <span className="text-[10px] uppercase font-semibold tracking-widest text-emerald-500">
+              {wardenHostel}
+            </span>
+          </div>
+
+          {/* ── Theme Toggle (Desktop) ── */}
+          <div className="mt-1">
+            <ThemeToggle />
           </div>
         </div>
 
-        {/* Warden Profile Card */}
-        <div className="p-4 mx-4 my-4 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center gap-3">
+        {/* Profile Card */}
+        <div
+          className="mx-4 my-4 p-3 rounded-xl flex items-center gap-3"
+          style={{
+            backgroundColor: isDark ? 'rgba(139,92,246,0.12)' : '#F3E8FF',
+            border: `1px solid ${isDark ? 'rgba(139,92,246,0.25)' : '#DDD6FE'}`,
+          }}
+        >
           <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0">
             {currentUser.avatar ? (
               <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
             ) : (
-              (currentUser.name ?? '?').charAt(0)
+              (currentUser.name ?? '?').charAt(0).toUpperCase()
             )}
           </div>
           <div className="overflow-hidden">
-            <h2 className="text-sm font-semibold text-white truncate">{currentUser.name}</h2>
-            <span className="inline-block text-[9px] uppercase font-bold text-purple-300 bg-purple-900/80 px-2 py-0.5 rounded border border-purple-500/30">
+            <h2 className="text-sm font-semibold truncate" style={{ color: 'var(--text-heading)' }}>
+              {currentUser.name}
+            </h2>
+            <span
+              className="inline-block text-[9px] uppercase font-bold px-2 py-0.5 rounded"
+              style={{
+                backgroundColor: isDark ? 'rgba(139,92,246,0.3)' : '#EDE9FE',
+                color: isDark ? '#C084FC' : '#7C3AED',
+              }}
+            >
               Hostel Warden
             </span>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-4 space-y-1.5 py-2">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-purple-400 px-3 mb-2">Hostel Management</div>
-          <Link
-            href="/warden/dashboard"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium transition-all ${
-              pathname === '/warden/dashboard'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-            }`}
+        <nav className="flex-1 overflow-y-auto px-4 space-y-1 py-2">
+          <div
+            className="text-[10px] font-bold uppercase tracking-wider px-3 mb-2"
+            style={{ color: 'var(--primary)' }}
           >
-            <Building2 className="w-4 h-4" />
-            Hostel Grievances &amp; Approvals
-          </Link>
+            Hostel Management
+          </div>
 
-          <Link
-            href="/warden/profile"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium transition-all ${
-              pathname === '/warden/profile'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <User className="w-4 h-4 text-purple-400" />
-            Edit Profile
-          </Link>
+          {[
+            { href: '/warden/dashboard', label: 'Hostel Grievances & Approvals', icon: Building2 },
+            { href: '/warden/profile',   label: 'Edit Profile',                   icon: User },
+          ].map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium transition-all"
+                style={{
+                  backgroundColor: isActive
+                    ? 'var(--primary)'
+                    : 'transparent',
+                  color: isActive ? '#ffffff' : navText,
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = navHoverBg;
+                    (e.currentTarget as HTMLElement).style.color = navHoverText;
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                    (e.currentTarget as HTMLElement).style.color = navText;
+                  }
+                }}
+              >
+                <Icon
+                  className="w-4 h-4 shrink-0"
+                  style={{ color: isActive ? '#ffffff' : 'var(--primary)' }}
+                />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-4 border-t border-purple-500/20">
+        {/* Footer Buttons */}
+        <div className="p-4" style={{ borderTop: `1px solid ${sidebarBorder}` }}>
           {currentUser.role === 'admin' && (
             <Link
               href="/admin/dashboard"
-              className="w-full py-2.5 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold flex items-center justify-between mb-2 transition-all"
+              className="w-full py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-between mb-2 transition-all"
+              style={{
+                backgroundColor: isDark ? 'rgba(245,158,11,0.1)' : '#FFF7ED',
+                border: '1px solid rgba(245,158,11,0.35)',
+                color: isDark ? '#FBBF24' : '#B45309',
+              }}
             >
               <span>Back to Admin</span>
               <ArrowRight className="w-4 h-4" />
@@ -151,7 +249,12 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
           )}
           <button
             onClick={logout}
-            className="w-full py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+            className="w-full py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+            style={{
+              backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#FEF2F2',
+              border: '1px solid rgba(239,68,68,0.3)',
+              color: isDark ? '#F87171' : '#DC2626',
+            }}
           >
             <LogOut className="w-4 h-4" />
             Sign Out
@@ -159,8 +262,13 @@ export default function WardenLayout({ children }: { children: React.ReactNode }
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-3 sm:p-6 md:p-8 overflow-y-auto max-w-full">{children}</main>
+      {/* ── Main Content ── */}
+      <main
+        className="flex-1 overflow-y-auto max-w-full"
+        style={{ backgroundColor: 'var(--bg-main)' }}
+      >
+        {children}
+      </main>
     </div>
   );
 }
